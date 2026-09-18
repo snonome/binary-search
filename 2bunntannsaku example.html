@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>二分探索</title>
+    <style>
+        body { font-family: sans-serif; margin: 20px; line-height: 1.6; background-color: #f9f9f9; display: flex; justify-content: center; }
+        .container { width: 100%; max-width: 600px; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        textarea, input { width: 100%; margin-bottom: 10px; display: block; padding: 8px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px; }
+        textarea { height: 80px; }
+        .btn-group { display: flex; gap: 10px; margin-bottom: 10px; }
+        button { flex: 1; padding: 12px; cursor: pointer; border: none; border-radius: 4px; font-weight: bold; font-size: 16px; }
+        #searchBtn { background-color: #007bff; color: white; }
+        #searchBtn:disabled { background-color: #ccc; cursor: not-allowed; }
+        #clearBtn { background-color: #dc3545; color: white; }
+        .res { margin-top: 15px; padding: 10px; border-radius: 4px; background-color: #eee; font-weight: bold; text-align: center; }
+        .steps { margin-top: 20px; }
+        .step-block { border-top: 4px solid #007bff; padding: 15px; margin-bottom: 15px; background: #f0f7ff; border-radius: 4px; text-align: center; }
+        .array-view { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 10px; justify-content: center; }
+        .cell { padding: 5px 10px; border: 1px solid #ccc; background: #fff; border-radius: 3px; font-size: 14px; }
+        .cell.active { background: #fff3cd; border-color: #ffc107; }
+        .cell.mid { background: #dc3545; color: white; border-color: #dc3545; font-weight: bold; }
+        .cell.disabled { background: #e2e3e5; color: #6c757d; border-color: #d6d8db; }
+        label { font-weight: bold; display: block; margin-top: 10px; }
+        h2 { text-align: center; margin-top: 0; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h2>二分探索</h2>
+    
+    <label>1. データをコピペ</label>
+    <textarea id="dataInput" placeholder="ここに数値をコピペしてください"></textarea>
+
+    <label>2. 探したい数値</label>
+    <input type="number" id="targetInput" placeholder="0">
+
+    <div class="btn-group">
+        <button id="searchBtn" onclick="startVisualSearch()">探索を開始</button>
+        <button id="clearBtn" onclick="clearAll()">すべてクリア</button>
+    </div>
+
+    <div class="steps" id="stepsContainer"></div>
+    <div class="res" id="searchResult">結果がここに表示されます</div>
+</div>
+
+<script>
+    function sleep(ms) {
+        return new Promise(resolve => setTimeout(resolve, ms));
+    }
+
+    function clearAll() {
+        document.getElementById('dataInput').value = '';
+        document.getElementById('targetInput').value = '';
+        document.getElementById('stepsContainer').innerHTML = '';
+        const searchResult = document.getElementById('searchResult');
+        searchResult.style.backgroundColor = '#eee';
+        searchResult.style.color = '#000';
+        searchResult.innerText = "結果がここに表示されます";
+    }
+
+    async function startVisualSearch() {
+        const rawData = document.getElementById('dataInput').value;
+        const targetVal = Number(document.getElementById('targetInput').value);
+        const stepsContainer = document.getElementById('stepsContainer');
+        const searchResult = document.getElementById('searchResult');
+        const searchBtn = document.getElementById('searchBtn');
+        
+        searchBtn.disabled = true;
+        stepsContainer.innerHTML = '';
+        searchResult.style.backgroundColor = '#eee';
+        searchResult.style.color = '#000';
+        searchResult.innerText = "探索中...";
+
+        let data = rawData
+            .split(/[\s,]+/)
+            .map(v => v.trim())
+            .filter(v => v !== "" && !isNaN(v))
+            .map(Number);
+
+        if (data.length === 0) {
+            searchResult.innerText = "データが入力されていません。";
+            searchBtn.disabled = false;
+            return;
+        }
+
+        data.sort((a, b) => a - b);
+
+        let left = 0;
+        let right = data.length - 1;
+        let stepCount = 1;
+        let foundIndex = -1;
+
+        while (left <= right) {
+            let mid = Math.floor((left + right) / 2);
+            
+            const stepBlock = document.createElement('div');
+            stepBlock.className = 'step-block';
+            stepBlock.innerHTML = `<div><strong>ステップ ${stepCount}</strong></div><div>範囲: インデックス ${left} 〜 ${right} (中央: インデックス ${mid}, 値: ${data[mid]})</div>`;
+            
+            const arrayView = document.createElement('div');
+            arrayView.className = 'array-view';
+            
+            data.forEach((val, idx) => {
+                const cell = document.createElement('div');
+                cell.className = 'cell';
+                cell.innerText = val;
+                
+                if (idx === mid) {
+                    cell.className += ' mid';
+                } else if (idx >= left && idx <= right) {
+                    cell.className += ' active';
+                } else {
+                    cell.className += ' disabled';
+                }
+                arrayView.appendChild(cell);
+            });
+            
+            stepBlock.appendChild(arrayView);
+            stepsContainer.appendChild(stepBlock);
+            window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+
+            await sleep(1000);
+
+            if (data[mid] === targetVal) {
+                foundIndex = mid;
+                break;
+            } else if (data[mid] < targetVal) {
+                left = mid + 1;
+            } else {
+                right = mid - 1;
+            }
+            stepCount++;
+        }
+
+        if (foundIndex !== -1) {
+            searchResult.style.backgroundColor = '#d4edda';
+            searchResult.style.color = '#155724';
+            searchResult.innerText = `【成功】${targetVal} が見つかりました！（整列後データの ${foundIndex + 1} 番目 / インデックス: ${foundIndex}）`;
+        } else {
+            searchResult.style.backgroundColor = '#f8d7da';
+            searchResult.style.color = '#721c24';
+            searchResult.innerText = `【失敗】${targetVal} はデータ内に見つかりませんでした。`;
+        }
+        
+        window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+        searchBtn.disabled = false;
+    }
+</script>
+</body>
+</html>
